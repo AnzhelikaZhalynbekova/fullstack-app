@@ -6,15 +6,17 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 # 🔹 Подключение к БД
 def get_conn():
+    if not DATABASE_URL:
+        raise Exception("DATABASE_URL is missing")
     return psycopg2.connect(DATABASE_URL)
 
 
-# 🔥 Авто-создание таблицы
+# 🔥 Создание таблицы (БЕЗ авто-вызова при import)
 def init_db():
     conn = get_conn()
     cur = conn.cursor()
@@ -31,7 +33,6 @@ def init_db():
     conn.close()
 
 
-# 🔹 GET
 @app.route("/api/data", methods=["GET"])
 def get_data():
     conn = get_conn()
@@ -43,13 +44,9 @@ def get_data():
     cur.close()
     conn.close()
 
-    # превращаем в нормальный JSON
-    result = [{"id": r[0], "name": r[1]} for r in rows]
-
-    return jsonify(result)
+    return jsonify([{"id": r[0], "name": r[1]} for r in rows])
 
 
-# 🔹 POST
 @app.route("/api/data", methods=["POST"])
 def add_data():
     data = request.json
@@ -68,28 +65,28 @@ def add_data():
     cur.close()
     conn.close()
 
-    return jsonify({
-        "message": "Item added",
-        "id": new_id
-    }), 201
+    return jsonify({"id": new_id}), 201
 
 
-# 🔹 DELETE
 @app.route("/api/data/<int:id>", methods=["DELETE"])
 def delete_data(id):
     conn = get_conn()
     cur = conn.cursor()
 
     cur.execute("DELETE FROM items WHERE id = %s;", (id,))
-    conn.commit()
 
+    conn.commit()
     cur.close()
     conn.close()
 
     return jsonify({"status": "deleted"})
 
 
-# 🚀 ВАЖНО: запуск
+# 🚀 Railway-safe start
 if __name__ == "__main__":
-    init_db()  # ← ВОТ ЗДЕСЬ вызываем
-    app.run(host="0.0.0.0", port=5001)
+    port = int(os.environ.get("PORT", 5000))
+
+    # создаём таблицу ТОЛЬКО при запуске сервера
+    init_db()
+
+    app.run(host="0.0.0.0", port=port)
