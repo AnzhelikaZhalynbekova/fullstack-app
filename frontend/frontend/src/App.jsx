@@ -5,6 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 function App() {
   const [data, setData] = useState([]);
   const [name, setName] = useState("");
+  console.log("API:", import.meta.env.VITE_API_URL);
 
   const fetchData = async () => {
     const res = await fetch(`${API_URL}/api/data`);
